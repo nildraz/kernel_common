@@ -1,0 +1,62 @@
+/*
+ * Copyright (C) 2014 Nufront Corporation
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
+ *
+ * This program is distributed "as is" WITHOUT ANY WARRANTY of any
+ * kind, whether express or implied; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/include/ "nufront-npsc01.dtsi"
+
+/ {
+	model = "Nufront NPSC01 board";
+	compatible = "nufront,npsc01-fpga-board", "nufront,npsc01";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 mem=320M root=/dev/mmcblk0p2 rw rootwait init=/init";
+	};
+
+	memory {
+		reg = <0x80000000 0x94000000>; /* 320 MB */
+	};
+};
+	&mmc0 {
+		pinctrl-names = "mmc0_4bit";
+		/*pinctrl-0 = <&mmc0_pin>;*/
+		freq = <50000000>;
+		ctype = < 1 >;   /*SD_CARD = 1 EMMC_CARD = 4 SDIO_CARD = 8*/
+		is_8bit = < 0 >; /*false = 0 true = 1*/
+		no_wp = < 0 >; /*false = 0 true = 1*/
+		no_dp = < 0 >; /*false = 0 true = 1*/
+		pm_caps = < 0 >; /*false = 0 true = 1*/
+		caps = < 0x7aa6409 >;
+		ocr_avail = <0x00ff8000>;
+		drv_strength = < 0x55555555 >;
+		drv_strength2 = < 0x55555555 >;
+		scm_offset = < 0 >;
+		scm_offset2 = < 0 >;
+		status = "okay";
+	};
+	&mmc1 {
+		npscxmci,card-type = <0x1>;
+		npscxmci,bus-width = <8>;
+		npscxmci,ocr-avail = <0xff8000>;
+		npscxmci,max-frequency = <10000000>;
+		npscxmci,noremoval;
+		npscxmci,cap-ingnor-pm-notify;
+		npscxmci,broken-timeout;
+		npscxmci,cap-highspeed;
+		npscxmci,cap-1v8-ddr;
+		npscxmci,cap-ddr50;
+		npscxmci,cap-hs200-1v8;
+		/*npscxmci,cap-hs400-1v8;*/
+		status = "okay";
+	};
+

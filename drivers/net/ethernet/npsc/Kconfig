@@ -1,0 +1,27 @@
+#
+# Synopsys network device configuration
+#
+
+config NET_VENDOR_NPSC
+	bool "Npsc devices"
+	default y
+	---help---
+	  If you have a network (Ethernet) device belonging to this class, say Y.
+
+	  Note that the answer to this question doesn't directly affect the
+	  kernel: saying N will just cause the configurator to skip all
+	  the questions about Npsc devices. If you say Y, you will be asked
+	  for your specific device in the following questions.
+
+if NET_VENDOR_NPSC
+
+config NPSC_ETH_QOS
+	tristate "NPSC Ethernet QOS support"
+	select PHYLIB
+	select CRC32
+	select MII
+	depends on OF && HAS_DMA
+	---help---
+	  This driver supports the NPSC Ethernet QoS from Npsc
+
+endif # NET_VENDOR_NPSC

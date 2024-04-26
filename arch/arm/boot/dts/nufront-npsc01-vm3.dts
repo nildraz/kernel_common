@@ -1,0 +1,234 @@
+/*
+ * Copyright (C) 2014 Nufront Corporation
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
+ *
+ * This program is distributed "as is" WITHOUT ANY WARRANTY of any
+ * kind, whether express or implied; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "nufront-npsc01.dtsi"
+#include "dt-bindings/gpio/gpio.h"
+/ {
+	model = "Nufront NPSC01 board";
+	compatible = "nufront,npsc01-vm3-board", "nufront,npsc01";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 mem=1024M root=/dev/mmcblk0p2 rw rootwait init=/init";
+	};
+
+	memory {
+		reg = <0x90000000 0xd0000000>; /* 1024 MB */
+	};
+	soc {
+		LVDS: LVDS {
+			panel = "npsc01_lvds";
+		};
+	};
+
+    gpio_poweroff {
+          compatible = "gpio-poweroff";
+          gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>; /* A9GPIO[22] GPIO_ACTIVE_HIGH:0*/
+    };
+
+	gpio_keys {
+		  compatible = "gpio-keys";
+		  #address-cells = <1>;
+		  #size-cells = <0>;
+		 button0@0 {
+			    label = "Paper In";
+			    linux,code = <195>;  /*1->116 , S2: 116 will paper in wake-up from S2 , but S3 should set 1*/
+			    gpios = <&gpio_wakeup 0 GPIO_ACTIVE_HIGH>; /*paper in active high, GPIO_ACTIVE_HIGH:0*/
+			    gpio-key,wakeup;
+				linux,can-disable;
+                debounce-interval = <200>;
+		  };
+		  button1@1 {
+		  	    label = "Power Key";
+			    linux,code = <116>;
+			    gpios = <&gpio_wakeup 1 GPIO_ACTIVE_LOW>; 
+			    gpio-key,wakeup;
+				linux,can-disable;
+				debounce-interval = <20>;
+		  };
+
+		  button6@6 {
+			    label = "WakeupGPIO_6";
+			    linux,code = <7>;
+			    gpios = <&gpio_wakeup 6 GPIO_ACTIVE_LOW>; 
+			    gpio-key,wakeup;
+		  };
+
+	};	
+
+};
+
+	&pinctrl {
+		spi0_pmx: spi0_pmx {
+			groups = "spi0_grp";
+			function = "spi0";
+		};
+
+		spi1_pmx: spi1_pmx {
+			groups = "spi1_grp";
+			function = "spi1";
+		};
+
+		pwm0_pin: pwm0-pins {	
+	  	     	pins = "pwm0_grp";
+	  	        function = "pwm0";
+		};
+
+		i2c0_pmx: i2c0_pmx {
+			groups = "i2c0_grp";
+			function = "i2c0";
+		};
+		i2c1_pmx: i2c1_pmx {
+			groups = "i2c1_grp";
+			function = "i2c1";
+		};
+
+	};
+
+	&mmc0 {
+		pinctrl-names = "mmc0_4bit";
+		/*pinctrl-0 = <&mmc0_pin>;*/
+		freq = <25000000>;
+		ctype = < 1 >;   /*SD_CARD = 1 EMMC_CARD = 4 SDIO_CARD = 8*/
+		is_8bit = < 0 >; /*false = 0 true = 1*/
+		no_wp = < 0 >; /*false = 0 true = 1*/
+		no_dp = < 0 >; /*false = 0 true = 1*/
+		pm_caps = < 0 >; /*false = 0 true = 1*/
+		caps = < 0x7aa6409 >;
+		ocr_avail = <0x00ff8000>;
+		drv_strength = < 0x55555555 >;
+		drv_strength2 = < 0x55555555 >;
+		scm_offset = < 0 >;
+		scm_offset2 = < 0 >;
+		status = "okay";
+	};
+	&mmc1 {
+		npscxmci,card-type = <0x1>;
+		npscxmci,bus-width = <8>;
+		npscxmci,ocr-avail = <0xff8080>;
+		npscxmci,max-frequency = <96000000>;
+		npscxmci,noremoval;
+		npscxmci,cap-ingnor-pm-notify;
+		npscxmci,broken-timeout;
+		npscxmci,cap-highspeed;
+		npscxmci,cap-hs200-1v8;
+		npscxmci,cap-hs400-1v8;
+		status = "okay";
+	};
+
+	&spi0 {
+		pinctrl-0 = <&spi0_pmx>;
+		pinctrl-names = "default";
+		status = "okay";
+		cs-gpios = <&gpio0 9 0>;
+		dma-rx-chan = "spi0_rx";
+		dma-tx-chan = "spi0_tx";
+		enable-dma;
+
+		spi-flash0 {
+			compatible = "mx25l25635e";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0>;
+			spi-max-frequency = <24000000>;
+			m25p,use-dma;
+
+			partition@0 {  /* 0xc00: spl, 0x8000: env */
+				label = "u-boot-spl";
+				reg = <0x0 0x10000>;
+			};
+
+			partition@10000 {
+				label = "u-boot";
+				reg = <0x10000 0xf0000>;
+			};
+
+			partition@100000 {
+				label = "logo";
+				reg = <0x100000 0x300000>;
+			};
+
+			partition@400000 {
+				label = "kernel-ramfs";
+				reg = <0x400000 0x1a00000>;
+			};
+
+			partition@1e00000 {
+				label = "user";
+				reg = <0x1e00000 0x200000>;
+			};
+		};
+	};
+
+	&spi1 {
+		pinctrl-0 = <&spi1_pmx>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+
+	&i2c0 {
+		pinctrl-0 = <&i2c0_pmx>;
+		pinctrl-names = "default";
+		status = "okay";
+
+        bq32k@0x68{
+            compatible ="bq32000";
+            reg = <0x68>;
+        };
+
+        tca9555@0x26{
+            compatible ="tca9555";
+            reg = <0x26>;
+        }; 
+
+        eeprom@0x53{
+            compatible ="24c32";
+            reg = <0x53>;
+        }; 
+
+	};
+
+	&i2c1 {
+		pinctrl-0 = <&i2c1_pmx>;
+		pinctrl-names = "default";
+		status = "okay";
+        
+        /*CONFIG_TOUCHSCREEN_FT5X0X*/
+		ft5426@0x38{
+			compatible ="ft5x0x_ts";
+			reg = <0x38>;
+		};
+
+        /*CONFIG_TOUCHSCREEN_GT9XX*/ 
+		goodix_ts@0x14 {
+			compatible = "Goodix-TS";
+			reg = <0x14>;
+		};	
+
+	};
+
+&lcd {
+	pinctrl-names = "default";
+	display_interface = <&LVDS>;
+};
+
+&backlight {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pin>;
+	display_interface = <&LVDS>;
+};
+
+&lvdstx {
+	display_interface = <&LVDS>;
+};

@@ -1,0 +1,6 @@
+config RTL8188EU
+	tristate "Realtek 8188EU USB WiFi"
+	depends on USB && CFG80211 && MAC80211 && USB_WDM
+	---help---
+		This is a driver for RTL8188EU based cards.
+

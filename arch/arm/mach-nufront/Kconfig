@@ -1,0 +1,43 @@
+if ARCH_NUFRONT
+
+menu "Nufront NPSC01 SoCs Support"
+
+config ARCH_NPSC01
+    bool "NUFRONT NPSC01"
+    select ARCH_HAS_HOLES_MEMORYMODEL
+    select GENERIC_ALLOCATOR
+    select ARCH_REQUIRE_GPIOLIB
+    select CLKDEV_LOOKUP
+    select CLKSRC_MMIO
+    select GENERIC_CLOCKEVENTS
+    select MULTI_IRQ_HANDLER
+    select MAY_HAVE_SPARSE_IRQ
+    select USE_OF
+    select HAVE_SMP
+    select CACHE_L2X0
+
+    select ARM_AMBA
+    select ARM_GIC
+    select CPU_V7
+    select NPSC_APB_TIMER
+    select NPSC_APB_TIMER_OF
+    select HAVE_ARM_SCU
+    select HAVE_ARM_TWD if LOCAL_TIMERS
+    select HAVE_UNSTABLE_SCHED_CLOCK
+    select CLKSRC_OF
+    select ARCH_HAS_CPUFREQ
+    select COMMON_CLK
+    select PINCTRL
+    select MFD_SYSCON
+
+    help
+      Nufront NPSC01 SoCs based systems
+
+
+if ARCH_NPSC01
+   comment "Nufront NPSC01 SoCs based systems"
+endif
+
+endmenu
+
+endif

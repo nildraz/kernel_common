@@ -1,0 +1,10 @@
+menu "Efuse support"
+
+config EFUSE
+	bool "Efuse driver support"
+
+config EFUSE_SMIC40
+	tristate "smic40 efuse support for nufront"
+	depends on EFUSE
+
+endmenu # Efuse support

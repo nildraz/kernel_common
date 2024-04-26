@@ -1,0 +1,6 @@
+
+config HAS_A9M3
+	bool "NPSC01 A9M3 Test Subsystem"
+	help
+	  Provide driver for NPSC01 A9M3 Test subsystem.
+

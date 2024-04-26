@@ -1,0 +1,500 @@
+/*
+ *  Copyright (C) 2014 Nufront Corporation
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "skeleton.dtsi"
+#include "dt-bindings/clock/npsc01-clock.h"
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	aliases {
+		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		timer0 = &timer0;
+		timer1 = &timer1;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			compatible = "arm,cortex-a9";
+			device_type = "cpu";
+			reg = <0>;
+			clocks = <&clks NPSC01_CPU_CLK>;
+			clock-names = "cpu_clk";
+		};
+
+		cpu@1 {
+			compatible = "arm,cortex-a9";
+			device_type = "cpu";
+			reg = <1>;
+		};
+
+	};
+
+	gic: interrupt-controller@05041000 {
+		compatible = "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0x05041000 0x1000>,
+		      <0x05040100 0x1000>;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		device_type = "soc";
+		interrupt-parent = <&gic>;
+		ranges;
+
+		amba {
+			compatible = "arm,amba-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			pl330dma: pl330@0x02044000 {
+				compatible = "arm,pl330", "arm,primecell";
+				/*reg = <0x0204000 0x1000>;*/
+				/*interrupts = <0 78 0x04>;*/
+				/*clocks = <&clks 138>;*/
+				/*clock-names = "apb_pclk";*/
+				/*#dma-cells = <1>;*/
+				/*#dma-channels = <8>;*/
+				/*#dma-requests = <32>;*/
+            };
+			L2: cache-controller {
+				compatible = "arm,pl310-cache";
+				reg = <0x05042000 0x1000>;
+				arm,data-latency = <2 3 2>;
+				arm,tag-latency = <2 3 2>;
+				cache-unified;
+				cache-level = <2>;
+			};
+		};
+		rtc: rtc@05250000 {
+			compatible = "npsc,npsc-apb-rtc";
+			reg = <0x05250000 0xff>;
+			interrupts = <0 34 4>;
+		};
+
+		scm: scm@5210000 {
+			compatible = "nufront,scm", "syscon";
+			reg = <0x05210000 0x1000>;
+		};
+
+		prcm: prcm@05200000 {
+			compatible = "nufront,prcm", "syscon";
+			reg = <0x05200000 0x1000>;
+		};
+
+		clks: clks {
+			#clock-cells = <1>;
+			compatible = "nufront,clks";
+		};
+
+		/* For calling reset driver, Please follow this example:
+		 * resets = <&reset_phandle1 reg bit polarity>;
+		 *
+		 * reg: the register offset from prcm base.
+		 * bit: which bit in the register controls reset.
+		 * polarity: high 1 or low 0 active.
+		 */
+		chip_rst: reset {
+			#reset-cells = <3>;
+			compatible = "nufront,nufront-reset";
+			syscon = <&prcm>;
+		};
+
+		pinctrl: pinctrl{
+			compatible = "nufront,npsc01-pinctrl";
+			syscon = <&scm>;
+			gpio-chips = <&gpio_wakeup>, <&gpio0>, <&gpio1>;
+		};
+
+		gpio_wakeup: gpio@05240000 {
+			compatible = "nufront,npsc-apb-gpio";
+			reg = <0x05240000 0x7f>;
+			interrupts = <0 16 4>;
+			interrupt-controller;
+			wakeup-source;
+			base = <0>;
+			irq_base = <300>;
+			num_groups = <1>;
+			num_pins = <8>;
+			#gpio-cells = <2>;
+		};
+		gpio0: gpio@06000000 {
+			compatible = "nufront,npsc-apb-gpio";
+			reg = <0x06000000 0x7f>;
+			interrupts = <0 22 4>;
+			interrupt-controller;
+			base = <8>;
+			irq_base = <308>;
+			num_groups = <1>;
+			num_pins = <16>;
+			#gpio-cells = <2>;
+		};
+		gpio1: gpio@06010000 {
+			compatible = "nufront,npsc-apb-gpio";
+			reg = <0x06010000 0x7f>;
+			interrupts = <0 23 4>;
+			interrupt-controller;
+			base = <24>;
+			irq_base = <324>;
+			num_groups = <1>;
+			num_pins = <16>;
+			#gpio-cells = <2>;
+		};
+
+		/* use suc private timer as wakeup clock*/
+		scutimer: scutimer@05040600 {
+			compatible = "arm,cortex-a9-twd-timer";
+			reg = <0x05040600 0x100>;
+			interrupts = <1 13 0xf04>;
+			clocks = <&clks NPSC01_SCU_PERIPH_CLK>;
+		};
+
+		/* use timer 0 as clock event and sched clock*/
+		timer0: timer0@05220000 {
+			compatible = "npsc,npsc-apb-timer-osc", "npsc,npsc-apb-timer-sp";
+			reg = <0x05220000 0x100>;
+			clock-freq = <24000000>;
+			interrupts = <0 21 4>;
+			status = "ok";
+		};
+
+		/* use timer 1 as clock source*/
+		timer1: timer1@05220014 {
+			compatible = "npsc,npsc-apb-timer-osc";
+			reg = <0x05220014 0x100>;
+			clock-freq = <24000000>;
+			status = "ok";
+		};
+
+		uart0: serial0@06100000 {
+			compatible = "npsc,npsc-apb-uart";
+			reg = <0x06100000 0x1000>;
+			interrupts = <0 31 4>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <64>;
+			clock-frequency = <64000000>;
+		};
+
+		uart1: serial0@06110000 {
+			compatible = "npsc,npsc-apb-uart";
+			reg = <0x06110000 0x1000>;
+			interrupts = <0 30 4>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <64>;
+			clock-frequency = <64000000>;
+			clocks = <&clks NPSC01_UART1_CLK>;
+			clock-names = "uart1_clk";
+		};
+
+		uart2: serial0@06120000 {
+			compatible = "npsc,npsc-apb-uart";
+			reg = <0x06120000 0x1000>;
+			interrupts = <0 29 4>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <64>;
+			clock-frequency = <64000000>;
+			clocks = <&clks NPSC01_UART2_CLK>;
+			clock-names = "uart2_clk";
+		};
+
+		uart3: serial0@06130000 {
+			compatible = "npsc,npsc-apb-uart";
+			reg = <0x06130000 0x1000>;
+			interrupts = <0 28 4>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			fifo-size = <64>;
+			clock-frequency = <64000000>;
+			clocks = <&clks NPSC01_UART3_CLK>;
+			clock-names = "uart3_clk";
+		};
+
+		mmc0: nusmart-sdhci0@05070000 {
+			compatible = "nufront,sdhci-nusmart";
+			reg = <0x01100100 0x1000>;
+			interrupts = <0  54  4>;
+			clocks = <&clks NPSC01_SD0_CLK>;
+			clock-names = "sd_clk";
+			id = < 0 >;
+			ref_clk = <96000000>;
+			f_min = <400000>;
+			mmc_base = < 0x01100000 >;
+		};
+		mmc1: npscxmci1@05071000 {
+			compatible = "nufront,npscxmci";
+			reg = <0x01300000 0x1000>;
+			interrupts = <0  58  4>;
+			clocks = <&clks NPSC01_SD2_CLK>;
+			clock-names = "emmc_clk";
+			npscxmci,id = < 1 >;
+			npscxmci,fifo-depth = <512>;
+			npscxmci,clock-source = <96000000>;
+		};
+		a9m3smd: a9m3-smd {
+			compatible = "npsc,m3-smd";
+			/* a9 m3 scanner share mem */
+			reg = <0x80000000 0x100000>,
+				<0x80100000 0x100000>,/* a9 m3 printer share mem*/
+				<0x05210380 0x10>;  /* ap to m3 irq control base; A9 scm register */
+				/* m3s_2ap_irq1 */
+				interrupts = <0  37  4>,
+					<0   38   4>,/* m3s_2ap_irq0 */
+					<0  39  4>,/* m3p_2ap_irq1 */
+					<0  40  4>,/* m3p_2ap_irq0 */
+					<0  36  4>,/*m3p_wdt_irq*/
+					<0  35  4>;/*m3s_wdt_irq*/
+		};
+		a9wdt:a9wdt@06030000 {
+			compatible = "npsc,npsc-a9wakeup-wdt";
+			reg = <0x06030000 0x1000>;
+			/*wdt irq interrupt */
+			interrupts = <0 19 4>;
+			clocks = <&clks NPSC01_WDT_CLK>;
+			clock-names = "wdt_clk";
+		};
+                 ccp: crypto_ccp@0x06200000 {
+                         compatible = "dx,cc63p";
+                         reg = <0x06200000 0x1000>;
+                         interrupts = <0  91  4>;
+                 };
+		gmac: ethernet2@40010000 {
+			compatible = "npsc,npsc-qos-ethernet-4.10";
+			/*clock-names = "phy_ref_clk", "apb_pclk";*/
+			/*clocks = <&clkc 17>, <&clkc 15>; */
+			/*interrupt-parent = <&gic>;*/
+			interrupts = <0x0 0x31 0x4>;
+			wakeup-source;
+			phyirq_gpio = <&gpio_wakeup 6 0>;
+			reg = <0x2000000 0x2000>;
+			phy-handle = <&phy1>;
+			phy-mode = "rgmii";
+			mac-address = [f4 6d 04 2e aa e2];
+			npsc,write-requests = <2>;
+			npsc,read-requests = <16>;
+			npsc,burst-map = <0x7>;
+			npsc,txpbl = <8>;
+			npsc,rxpbl = <2>;
+			dma-coherent;
+			mdio {
+				#address-cells = <0x1>;
+				#size-cells = <0x0>;
+				phy1: phy@1 {
+				compatible = "RTL8211E Gigabit Ethernet";
+				device_type = "ethernet-phy";
+				reg = <0x00>;
+				};
+			};
+		};
+
+		spi0: spi0@06190000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "npsc,mmio-spi";
+			reg = <0x06190000 0x1000>;
+			bus_num = <0>;
+			interrupts = <0 32 4>;
+			clocks = <&clks NPSC01_SSI0_CLK>;
+			resets = <&chip_rst 0x190 12 0>;
+			dma-tx-chan = "spi0_tx";
+			dma-rx-chan = "spi0_rx";
+			status = "disabled";
+		};
+
+		spi1: spi1@061a0000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "npsc,mmio-spi";
+			reg = <0x061a0000 0x1000>;
+			bus_num = <1>;
+			interrupts = <0 33 4>;
+			clocks = <&clks NPSC01_SSI0_CLK>;
+			resets = <&chip_rst 0x190 13 0>;
+			dma-tx-chan = "spi1_tx";
+			dma-rx-chan = "spi1_rx";
+			status = "disabled";
+		};
+
+		fsusb0: ohci0@02830000 {
+			compatible = "nufront,fsusb-ohci";
+			reg = <0x02830000 0x10000>;
+			interrupts = <0 60 4>;
+			clocks = <&clks NPSC01_USB2_HOST0_CLK>, <&clks NPSC01_USB_HOST0_PHY>;
+			clock-names = "u2h_clk", "host_phy";
+			status = "disabled";
+		};
+
+		fsusb1: ohci1@02850000 {
+			compatible = "nufront,fsusb-ohci";
+			reg = <0x02850000 0x10000>,
+                              <0x06270028 0x4>,
+                              <0x06270014 0x4>;
+			interrupts = <0 62 4>;
+			wakeup-source;
+			clocks = <&clks NPSC01_USB2_HOST1_CLK>, <&clks NPSC01_USB_HOST1_PHY>;
+			clock-names = "u2h_clk", "host_phy";
+		};
+
+		hsusb0: ehci0@02820000 {
+			compatible = "nufront,hsusb-ehci";
+			reg = <0x02820000 0x10000>;
+			interrupts = <0 61 4>;
+			clocks = <&clks NPSC01_USB2_HOST0_CLK>, <&clks NPSC01_USB_HOST0_PHY>;
+			clock-names = "u2h_clk", "host_phy";
+			status = "disabled";
+		};
+
+		hsusb1: ehci1@02840000 {
+			compatible = "nufront,hsusb-ehci";
+			reg = <0x02840000 0x10000>;
+			interrupts = <0 63 4>;
+			wakeup-source;
+			clocks = <&clks NPSC01_USB2_HOST1_CLK>, <&clks NPSC01_USB_HOST1_PHY>;
+			clock-names = "u2h_clk", "host_phy";
+		};
+
+		dwcusb: otg@050A0000 {
+			compatible = "nufront,dwc_otg-nusmart";
+			reg = <0x02860000 0x10000>;
+			interrupts = <0 59 4>;
+			vbus_gpio = <&gpio_wakeup 2 0>;
+			clocks = <&clks NPSC01_USB2_DEV_CLK>, <&clks NPSC01_USB_DEV_PHY>;
+			clock-names = "usb2_dev_clk", "usb_dev_share_phy";
+			status = "disabled";
+		};
+
+		npscusb3_device: usb3_device@03800000 {
+			compatible = "nufront,npsc_usb3-nusmart_device";
+			reg = <0x03800000 0x100000>,
+				<0x02860000 0x10000>;
+			interrupts = <0 64 4>, <0 65 4>;
+			wakeup-source;
+			vbus_gpio = <&gpio_wakeup 2 0>;
+			phy_pwr = <&gpio_wakeup 3 0>;
+			resets = <&chip_rst 0x01f4 0 0>, <&chip_rst 0x01f4 1 0>;
+			reset-names = "u3d_por_vaux_rstn", "u3d_por_vcc_rstn";
+			clocks = <&clks NPSC01_USB3_DEV_CLK>, <&clks NPSC01_USB3_DEV_SUSPEND>,
+				   <&clks NPSC01_USB2_DEV_CLK>, <&clks NPSC01_USB_DEV_PHY>;
+			clock-names = "usb3_dev_clk", "usb3_dev_suspend_clk",
+				"usb2_dev_clk", "usb_dev_share_phy";
+		};
+
+		npscusb3_host: usb3_host@03900000 {
+			compatible = "nufront,npsc_usb3-nusmart_host";
+			reg = <0x03900000 0x10000>,
+				<0x02820174 0x4>,
+				<0x02820140 0x4>,
+				<0x02820164 0x4>;
+			interrupts = <0 67 4>, <0 68 4>;
+			wakeup-source;
+			clocks = <&clks NPSC01_USB3_HOST_CLK>, <&clks NPSC01_USB3_HOST_SUSPEND>,
+					<&clks NPSC01_USB_HOST0_PHY>;
+			clock-names = "u3h_clk","u3h_suspend", "host_phy";
+			resets = <&chip_rst 0x01f4 2 0>, <&chip_rst 0x01f4 3 0>;
+			reset-names = "u3h_por_vaux_rstn", "u3h_por_vcc_rstn";
+		};
+
+		g3d@03000000 {
+			compatible = "arm,mali-400", "arm,mali-utgard";
+			reg = <0x03000000 0x10000>;
+			interrupts = <0 73 4>, <0 74 4>, <0 75 4>, <0 76 4>;
+			interrupt-names = "IRQGP", "IRQGPMMU", "IRQPP0", "IRQPPMMU0";
+			clocks = <&clks NPSC01_MALI_DIV0>, <&clks NPSC01_MALI_DIV1>,
+					<&clks NPSC01_MALI_SEL>, <&clks NPSC01_MALI_ACLK>;
+			clock-names = "mali_div0_clk","mali_div1_clk","mali_clk_sel","mali_aclk";
+			pmu_domain_config = <0x1 0x1 0x2 0x0 0x0 0x0 0x0 0x0 0x0 0x1 0x0 0x0>;
+			pmu_switch_delay = <0xff>;
+		};
+		lcd: nusmartfb@06250000 {
+		     compatible = "nufront,nusmartfb";
+		     id = <0>;
+		     reg = <0x06250000 0x1000>;
+		     interrupts = <0 70 0x4>;
+		     /* interrupts = <0 85 0x4>, <0 86 0x4>, <0 87 0x4>; */
+		     clocks = <&clks NPSC01_PXL0_CLK>,<&clks NPSC01_DISP0_CLK>;
+		     clock-names = "pxl0_clk", "lcdc0_pclk";
+		     resets = <&chip_rst 0x204 16 0>;
+		     reset-names = "lcdc_reset";
+		};
+		lvdstx: lvdstx@061D0000 {
+			compatible = "nufront,lvdstx";
+			label = "lvdstx";
+			reg = <0x061D0000 0x100>;
+			clocks = <&clks NPSC01_LVDS_CLK>;
+			clock-names = "lvdstx_pclk";
+			resets = <&chip_rst 0x1d8 1 0>;
+			reset-names = "lvdstx_reset";
+		};
+		backlight: bl@06180000 {
+			   compatible = "nufront,backlight";
+			   label = "backlight";
+			   reg = < 0x6180000 0x4>;
+			   clocks = <&clks NPSC01_PWM0_CLK>;
+			   clock-names = "pwm_clk";
+			   resets = <&chip_rst 0x1a4 2 0>;
+	        };
+		i2c0:i2c0@06150000 {
+			compatible = "npsc,npsc-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x06150000 0xff>;
+			interrupts = <0 24 0x04>;
+			speed = < 0 >;
+			clocks = <&clks NPSC01_I2C0>;
+			clock-names = "i2c_clk";
+			resets = <&chip_rst 0x194 7 0>;
+			type = "i2c";
+			id = <0>;
+		};
+
+		i2c1:i2c1@6160000 {
+			compatible = "npsc,npsc-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x06160000 0xff>;
+			interrupts = <0 25 0x04>;
+			speed = < 0 >;
+			clocks = <&clks NPSC01_I2C1>;
+			clock-names = "i2c_clk";
+			resets = <&chip_rst 0x194 15 0>;
+			type = "i2c";
+			id = <1>;
+		};
+
+		efuse: efuse@06260000 {
+			compatible = "smic,smic40ll-efuse";
+			reg = <0x06260000 0xff>;
+			interrupts = <0 72 0x04>;
+			status = "okay";
+		};
+
+	};
+
+};
